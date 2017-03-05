@@ -21,18 +21,18 @@ static const uint8_t offsets[] = {
 };
 
 static const char * colors[] = {
-  "#cf4c56", // focuscol
-  "#9b9b9b", // unfocuscol
-  "#9b9b9b", // fixedcol
-  "#9b9b9b", // unkilcol
-  "#9b9b9b", // fixedunkilcol
-  "#9b9b9b", // outerbordercol
-  "#9b9b9b"  // emptycol
+  "#9b9b9b", // focuscol
+  "#cccccc", // unfocuscol
+  "#cccccc", // fixedcol
+  "#cccccc", // unkilcol
+  "#cccccc", // fixedunkilcol
+  "#cccccc", // outerbordercol
+  "#cccccc"  // emptycol
 };
 
 static const uint8_t borders[] = {
   0, // out border size
-  2, // full border size
+  1, // full border size
   0, // magnet border size
   0  // resize border size
 };
@@ -46,12 +46,10 @@ static const char * ignore_names[] = {
 ///--Menus and Programs---///
 static const char *terminal_black[] =	{ "termite", "-c", "/home/kyle/.config/termite/black", NULL };
 static const char *terminal_white[] =	{ "termite", "-c", "/home/kyle/.config/termite/white", NULL };
-static const char *nethack[] =			{ "termite", "-c", "/home/kyle/.config/termite/nethack", "-e", "nethack", NULL };
-static const char *caves[] =			{ "caves", NULL };
 static const char *rofi[] =				{ "/usr/bin/rofi", "-show", "run", NULL};
 static const char *browser[] =			{ "/usr/bin/chromium", NULL };
 static const char *scrot[] =			{ "scrot", "%Y-%m-%d_$wx$h.png", "-e" "mv $f ~/downloads/", NULL };
-static const char *scrot_select[] =		{ "scrot", "-s", "%Y-%m-%d_$wx$h.png", "-e" "mv $f ~/downloads/", NULL };
+static const char *scrot_select[] =		{ "scrot", "-s", "%Y-%m-%d_$wx$h-select.png", "-e" "mv $f ~/downloads/", NULL };
 
 ///---Media and Audio---///
 static const char *volup[] =			{ "amixer", "sset", "Master", "5%+", "unmute", NULL };
@@ -60,7 +58,6 @@ static const char *volmute[] =			{ "amixer", "sset", "Master", "toggle", NULL };
 static const char *brightup[] =			{ "xbacklight", "-inc", "25", NULL };
 static const char *brightdown[] =		{ "xbacklight", "-inc", "25", NULL };
 
-static const char *mpv_url[] =			{ "/home/bin/mpv-url", NULL };
 static const char *dummy[] =			{ "/usr/bin/true", NULL };
 
 ///--Custom foo---///
@@ -179,9 +176,6 @@ static key keys[] = {
     {  MOD ,              XK_Return,    start,			{.com = terminal_white}},
     {  MOD |SHIFT,		  XK_Return,    start,			{.com = terminal_black}},
     {  MOD,				  XK_a,			start,			{.com = browser}},
-    {  MOD |SHIFT,		  XK_a,			start,			{.com = mpv_url}},
-    {  MOD ,              XK_z,			start,			{.com = nethack}},
-    {  MOD |SHIFT,        XK_z,			start,			{.com = caves}},
 	// Media and Audio Keys
 	{  0x000000,		  0x1008ff13,	start,			{.com = volup}},
 	{  0x000000,		  0x1008ff11,	start,			{.com = voldown}},
@@ -191,8 +185,7 @@ static key keys[] = {
 
 	{  0x000000,		  0x1008ff03,	start,			{.com = brightdown}},
 	{  0x000000,		  0x1008ff02,	start,			{.com = brightup}},
-	{  0x000000,		  XK_Print,		start,			{.com = scrot}},
-	{  0x000000 |SHIFT,	  XK_Print,		start,			{.com = scrot_select}},
+	{  0x000000,		  XK_Print,		start,			{.com = scrot_select}},
     // Exit or restart 2bwm
     {  MOD |CONTROL,      XK_q,         twobwm_exit,    {.i=0}},
     {  MOD |CONTROL,      XK_r,         twobwm_restart, {.i=0}},
