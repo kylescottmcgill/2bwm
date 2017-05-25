@@ -1,23 +1,22 @@
-
 #define MOD XCB_MOD_MASK_4 /* Super/Windows key  or check xmodmap(1) with -pm  defined in /usr/include/xcb/xproto.h */
 #define CURSOR_POSITION MIDDLE
 
 static const float resize_keep_aspect_ratio = 1.03;
-static const bool resize_by_line = true;
+static const bool resize_by_line = false;
 static const bool inverted_colors = false;
 
 static const uint16_t movements[] = {
   2, // Move Step Slow
-  10, // Move Step Fast
+  20, // Move Step Fast
   2, // Mouse Slow
-  10  // Mouse Fast
+  20  // Mouse Fast
 };
 
 static const uint8_t offsets[] = {
-  15, // offsetx
-  15, // offsety
-  30, // max width
-  30  // max height
+  10, // offsetx
+  10, // offsety
+  20, // max width
+  20  // max height
 };
 
 static const char * colors[] = {
@@ -33,7 +32,7 @@ static const char * colors[] = {
 static const uint8_t borders[] = {
   0, // out border size
   1, // full border size
-  0, // magnet border size
+  1, // magnet border size
   0  // resize border size
 };
 
@@ -44,21 +43,20 @@ static const char * ignore_names[] = {
 };
 //
 ///--Menus and Programs---///
-static const char *terminal_black[] =	{ "termite", "-c", "/home/kyle/.config/termite/black", NULL };
-static const char *terminal_white[] =	{ "termite", "-c", "/home/kyle/.config/termite/white", NULL };
-static const char *rofi[] =				{ "/usr/bin/rofi", "-show", "run", NULL};
-static const char *browser[] =			{ "/usr/bin/chromium", NULL };
-static const char *scrot[] =			{ "scrot", "%Y-%m-%d_$wx$h.png", "-e" "mv $f ~/downloads/", NULL };
-static const char *scrot_select[] =		{ "scrot", "-s", "%Y-%m-%d_$wx$h-select.png", "-e" "mv $f ~/downloads/", NULL };
+static const char *terminal[] =			{ "termite", NULL };
+static const char *rofi[] =				  { "/usr/bin/rofi", "-show", "run", NULL};
+static const char *browser[] =			{ "/usr/bin/google-chrome-stable", NULL };
+static const char *scrot[] =			  { "scrot", "%Y-%m-%d_$wx$h.png", "-e" "mv $f ~/downloads/", NULL };
+static const char *scrot_select[] =	{ "scrot", "-s", "%Y-%m-%d_$wx$h-select.png", "-e" "mv $f ~/downloads/", NULL };
 
 ///---Media and Audio---///
-static const char *volup[] =			{ "amixer", "sset", "Master", "5%+", "unmute", NULL };
-static const char *voldown[] =			{ "amixer", "sset", "Master", "5%-", "unmute", NULL };
-static const char *volmute[] =			{ "amixer", "sset", "Master", "toggle", NULL };
+static const char *volup[] =			  { "pavol", "up", NULL };
+static const char *voldown[] =			{ "pavol", "down", NULL };
+static const char *volmute[] =			{ "pavol", "mute", NULL };
 static const char *brightup[] =			{ "xbacklight", "-inc", "25", NULL };
 static const char *brightdown[] =		{ "xbacklight", "-inc", "25", NULL };
 
-static const char *dummy[] =			{ "/usr/bin/true", NULL };
+static const char *dummy[] =			  { "/usr/bin/true", NULL };
 
 ///--Custom foo---///
 static void halfandcentered(const Arg *arg)
@@ -143,9 +141,9 @@ static key keys[] = {
     {  MOD ,              XK_Home,       resizestep_aspect, {.i=TWOBWM_RESIZE_KEEP_ASPECT_GROW}},
     {  MOD ,              XK_End,        resizestep_aspect, {.i=TWOBWM_RESIZE_KEEP_ASPECT_SHRINK}},
     // Full screen window without borders
-    {  MOD ,              XK_x,          maximize,          {.i=TWOBWM_FULLSCREEN}},
+    {  MOD |SHIFT,              XK_x,          maximize,          {.i=TWOBWM_FULLSCREEN}},
     //Full screen window without borders overiding offsets
-    {  MOD |SHIFT ,       XK_x,          maximize,          {.i=TWOBWM_FULLSCREEN_OVERRIDE_OFFSETS}},
+    {  MOD ,       XK_x,          maximize,          {.i=TWOBWM_FULLSCREEN_OVERRIDE_OFFSETS}},
     // Maximize vertically
     {  MOD ,              XK_m,          maxvert_hor,       {.i=TWOBWM_MAXIMIZE_VERTICALLY}},
     // Maximize horizontally
@@ -168,25 +166,24 @@ static key keys[] = {
     //unfold horizontally
     {  MOD |SHIFT|CONTROL,XK_n,         maxhalf,        {.i=TWOBWM_MAXHALF_UNFOLD_HORIZONTAL}},
 	// Center and Min-Max
-    {  MOD ,              XK_space,     halfandcentered,{.i=0}},
+    {  MOD ,              XK_z,     halfandcentered,{.i=0}},
     {  MOD ,              XK_period,    changescreen,	{.i=TWOBWM_NEXT_SCREEN}}, // Next Screen
     {  MOD ,              XK_comma,		changescreen,	{.i=TWOBWM_PREVIOUS_SCREEN}}, // Previous Screen
     {  MOD ,              XK_f,         fix,			{}}, // Make the window present on all workspaces
-    {  MOD ,			  XK_Escape,    start,			{.com = rofi}},
-    {  MOD ,              XK_Return,    start,			{.com = terminal_white}},
-    {  MOD |SHIFT,		  XK_Return,    start,			{.com = terminal_black}},
+    {  MOD ,			  XK_space,    start,			{.com = rofi}},
+    {  MOD ,			  XK_Return,    start,			{.com = terminal}},
     {  MOD,				  XK_a,			start,			{.com = browser}},
-	// Media and Audio Keys
-	{  0x000000,		  0x1008ff13,	start,			{.com = volup}},
-	{  0x000000,		  0x1008ff11,	start,			{.com = voldown}},
-	{  MOD,						XK_d,	start,			{.com = volup}},
-	{  MOD,						XK_s,	start,			{.com = voldown}},
-	{  0x000000,		  0x1008ff12,	start,			{.com = volmute}},
+    // Media and Audio Keys
+    {  0x000000,		  0x1008ff13,	start,			{.com = volup}},
+    {  0x000000,		  0x1008ff11,	start,			{.com = voldown}},
+    {  0x000000,		  0x1008ff12,	start,			{.com = volmute}},
+    {  MOD,						XK_d,	start,			      {.com = volup}},
+    {  MOD,						XK_s,	start,			      {.com = voldown}},
 
-	{  0x000000,		  0x1008ff03,	start,			{.com = brightdown}},
-	{  0x000000,		  0x1008ff02,	start,			{.com = brightup}},
-	{  0x000000,		  XK_Print,		start,			{.com = scrot_select}},
-    // Exit or restart 2bwm
+    {  0x000000,		  0x1008ff03,	start,			{.com = brightdown}},
+    {  0x000000,		  0x1008ff02,	start,			{.com = brightup}},
+    {  0x000000,		  XK_Print,		start,			{.com = scrot_select}},
+      // Exit or restart 2bwm
     {  MOD |CONTROL,      XK_q,         twobwm_exit,    {.i=0}},
     {  MOD |CONTROL,      XK_r,         twobwm_restart, {.i=0}},
 

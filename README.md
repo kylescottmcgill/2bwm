@@ -128,6 +128,33 @@ Bars
 Installation
 ============
 
+2bwm depends on the XCB libraries, and some of them are
+quite new, so most systems won't have them installed by default.
+Here's a (non-exhaustive) list of the dependencies:
+
++ xcb-randr
++ xcb-keysyms
++ xcb-icccm
++ xcb-ewmh
++ xcb-xrm (this one is quite new)
+
+If your system doesn't provide the above, or lacks some of them, you
+can download them [here](https://xcb.freedesktop.org/dist/).
+
+**Note**: `xcb-xrm` is not oficial yet,
+[here's the link](https://github.com/Airblader/xcb-util-xrm) to the repo.
+Archlinux and Voidlinux have it in their repositories.
+
+To build and install `xcb-xrm`, clone it and do the following commands:
+
+    cd xcb-util-xrm
+    git submodule update --init
+    ./autogen.sh --prefix=/usr
+    make
+    sudo make install
+
+Install it from your system's repositories in case it's available.
+
 Archlinux
 ---------
 
@@ -220,6 +247,25 @@ To show hidden windows you can use the hidden tool:
 
     hidden -c|xargs 9menu -popup -label Iconics -font "terminus12-10"
 
+Xresources configuration
+------------------------
+
+These are the values 2bwm will try loading from Xresources at startup:
+
+    twobwm.border_width: number
+    twobwm.outer_border: number
+    twobwm.focus_color: #RRGGBB
+    twobwm.unfocus_color: #RRGGBB
+    twobwm.fixed_color: #RRGGBB
+    twobwm.unkill_color: #RRGGBB
+    twobwm.outer_border_color: #RRGGBB
+    twobwm.fixed_unkill_color: #RRGGBB
+    twobwm.inverted_colors: true|false
+    twobwm.enable_compton: true|false
+
+**Note**: set `enable_compton` option to true in case you're using a
+composition manager.
+
 mplayer borders aren't set on startup
 -------------------------------------
 
@@ -274,29 +320,28 @@ it.
 ### GET IT ###
 Checkout the `devel` branch of the repo.
 
-Windows groups
+One border inside the other
 --------------
 
 ### CURRENT STATE ###
-Require testing
+Working
 
 ### DESCRIPTION ###
-Replaces workspaces by groups with a single keystroke. You can then set the
-state of each group independently (shown/hidden) meaning that you can have
-multiple groups shown at the same time
+Make the status border appear "within" the other border. This makes it look as if there were three borders.
 
-Here is a small gif to explain this behavior:
-
-![2bwm groups](http://blog.z3bra.org/img/2014-05-27-groups.gif)
 
 ### GET IT ###
-Checkout z3bra's 2bwm fork at http://git.z3bra.org/cgit.cgi/2bwm
+Checkout the `3bwm` branch of the repo
 
 
 TODO:
 =====
 
 * Fix the race condition bug that happens when switching workspaces too fast.
+
+* Fix the mapping issue with mplayer (doesn't have the issue when using -vo gl)
+
+* Bug related to gtkfilechooser dialog in telegram-desktop - needs more information to debug
 
 * Use the `xcb_ewmh.h` functions instead of that ugly hardcoded ATOM enum for
   example instead of the `ATOM[atom_client_list]` we could use `xcb_ewmh_set_client_list`
