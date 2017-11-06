@@ -41,6 +41,7 @@ static const char * ignore_names[] = {
   "bar",
   "lemonbar"
 };
+
 //
 ///--Menus and Programs---///
 static const char *terminal[] =			{ "termite", NULL };
@@ -180,8 +181,8 @@ static key keys[] = {
     {  MOD,						XK_d,	start,			      {.com = volup}},
     {  MOD,						XK_s,	start,			      {.com = voldown}},
 
-    {  0x000000,		  0x1008ff03,	start,			{.com = brightdown}},
-    {  0x000000,		  0x1008ff02,	start,			{.com = brightup}},
+    //{  0x000000,		  0x1008ff03,	start,			{.com = brightdown}},
+    //{  0x000000,		  0x1008ff02,	start,			{.com = brightup}},
     {  0x000000,		  XK_Print,		start,			{.com = scrot_select}},
       // Exit or restart 2bwm
     {  MOD |CONTROL,      XK_q,         twobwm_exit,    {.i=0}},
