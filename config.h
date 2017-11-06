@@ -1,6 +1,5 @@
 #define MOD XCB_MOD_MASK_4 /* Super/Windows key  or check xmodmap(1) with -pm  defined in /usr/include/xcb/xproto.h */
 #define CURSOR_POSITION MIDDLE
-
 static const float resize_keep_aspect_ratio = 1.03;
 static const bool resize_by_line = false;
 static const bool inverted_colors = false;
@@ -225,6 +224,7 @@ static key keys[] = {
     //{  MOD |SHIFT,        XK_Right,      cursor_move,       {.i=TWOBWM_CURSOR_RIGHT}},
     //{  MOD |SHIFT,        XK_Left,       cursor_move,       {.i=TWOBWM_CURSOR_LEFT}},
 };
+// the last argument makes it a root window only event
 static Button buttons[] = {
     {  MOD        ,XCB_BUTTON_INDEX_1,     mousemotion,   {.i=TWOBWM_MOVE}},
     {  MOD        ,XCB_BUTTON_INDEX_3,     mousemotion,   {.i=TWOBWM_RESIZE}},
