@@ -1,7 +1,8 @@
+
 #define MOD XCB_MOD_MASK_4 /* Super/Windows key  or check xmodmap(1) with -pm  defined in /usr/include/xcb/xproto.h */
 #define CURSOR_POSITION MIDDLE
 static const float resize_keep_aspect_ratio = 1.03;
-static const bool resize_by_line = false;
+static const bool resize_by_line = true;
 static const bool inverted_colors = false;
 
 static const uint16_t movements[] = {
@@ -19,12 +20,12 @@ static const uint8_t offsets[] = {
 };
 
 static const char * colors[] = {
-  "#9b9b9b", // focuscol
-  "#cccccc", // unfocuscol
-  "#cccccc", // fixedcol
-  "#cccccc", // unkilcol
-  "#cccccc", // fixedunkilcol
-  "#cccccc", // outerbordercol
+  "#ffffff", // focus
+  "#cccccc", // unfocus
+  "#cccccc", // fixed
+  "#ab1b1b", // unkil
+  "#cccccc", // fixedunkil
+  "#ffffff", // outerborder
   "#cccccc"  // emptycol
 };
 
@@ -32,39 +33,36 @@ static const uint8_t borders[] = {
   0, // out border size
   1, // full border size
   1, // magnet border size
-  0  // resize border size
+  1  // resize border size
 };
 
-#define LOOK_INTO "WM_NAME"
+#define LOOK_INTO "WM_CLASS"
 static const char * ignore_names[] = {
+  "chromium",
   "bar",
-  "lemonbar"
+  "rofi",
 };
 
 //
 ///--Menus and Programs---///
-static const char *terminal[] =			{ "termite", NULL };
-static const char *rofi[] =				  { "/usr/bin/rofi", "-show", "run", NULL};
-static const char *browser[] =			{ "/usr/bin/google-chrome-stable", NULL };
-static const char *scrot[] =			  { "scrot", "%Y-%m-%d_$wx$h.png", "-e" "mv $f ~/downloads/", NULL };
-static const char *scrot_select[] =	{ "scrot", "-s", "%Y-%m-%d_$wx$h-select.png", "-e" "mv $f ~/downloads/", NULL };
+static const char *terminal[] =             { "/usr/bin/alacritty", NULL };
+static const char *rofi[] =                 { "/usr/bin/rofi", "-show", "run", NULL};
+static const char *browser[] =              { "/usr/bin/chromium", NULL };
+static const char *screenshot_selection[] = { "screenshot", "--selection", NULL };
+static const char *screenshot_window[] =    { "screenshot", "--window", NULL };
 
 ///---Media and Audio---///
-static const char *volup[] =			  { "pavol", "up", NULL };
-static const char *voldown[] =			{ "pavol", "down", NULL };
-static const char *volmute[] =			{ "pavol", "mute", NULL };
-static const char *brightup[] =			{ "xbacklight", "-inc", "25", NULL };
-static const char *brightdown[] =		{ "xbacklight", "-inc", "25", NULL };
-
-static const char *dummy[] =			  { "/usr/bin/true", NULL };
+static const char *volup[] =                { "pavol", "up", NULL };
+static const char *voldown[] =              { "pavol", "down", NULL };
+static const char *volmute[] =              { "pavol", "mute", NULL };
 
 ///--Custom foo---///
 static void halfandcentered(const Arg *arg)
 {
-	Arg arg2 = {.i=TWOBWM_MAXHALF_VERTICAL_LEFT};
-	maxhalf(&arg2);
-	Arg arg3 = {.i=TWOBWM_TELEPORT_CENTER};
-	teleport(&arg3);
+    Arg arg2 = {.i=TWOBWM_MAXHALF_VERTICAL_LEFT};
+    maxhalf(&arg2);
+    Arg arg3 = {.i=TWOBWM_TELEPORT_CENTER};
+    teleport(&arg3);
 }
 ///---Shortcuts---///
 /* Check /usr/include/X11/keysymdef.h for the list of all keys
@@ -78,20 +76,8 @@ static void halfandcentered(const Arg *arg)
  *  XFilterEvent returns: False
  *
  *  The keycode here is keysym 0x1008ff17, so use  0x1008ff17
- *
- *
- * For AZERTY keyboards XK_1...0 should be replaced by :
- *      DESKTOPCHANGE(     XK_ampersand,                     0)
- *      DESKTOPCHANGE(     XK_eacute,                        1)
- *      DESKTOPCHANGE(     XK_quotedbl,                      2)
- *      DESKTOPCHANGE(     XK_apostrophe,                    3)
- *      DESKTOPCHANGE(     XK_parenleft,                     4)
- *      DESKTOPCHANGE(     XK_minus,                         5)
- *      DESKTOPCHANGE(     XK_egrave,                        6)
- *      DESKTOPCHANGE(     XK_underscore,                    7)
- *      DESKTOPCHANGE(     XK_ccedilla,                      8)
- *      DESKTOPCHANGE(     XK_agrave,                        9)*
  */
+
 #define DESKTOPCHANGE(K,N) \
 {  MOD ,             K,              changeworkspace, {.i=N}}, \
 {  MOD |SHIFT,       K,              sendtoworkspace, {.i=N}},
@@ -108,18 +94,18 @@ static key keys[] = {
     {  MOD |SHIFT,    XK_l,          resizestep,        {.i=TWOBWM_RESIZE_RIGHT}},
     {  MOD |SHIFT,    XK_h,          resizestep,        {.i=TWOBWM_RESIZE_LEFT}},
     // Resize a window slower
-    {  MOD |SHIFT|ALT,		  XK_k,          resizestep,        {.i=TWOBWM_RESIZE_UP_SLOW}},
-    {  MOD |SHIFT|ALT,		  XK_j,          resizestep,        {.i=TWOBWM_RESIZE_DOWN_SLOW}},
-    {  MOD |SHIFT|ALT,		  XK_l,          resizestep,        {.i=TWOBWM_RESIZE_RIGHT_SLOW}},
-    {  MOD |SHIFT|ALT,		  XK_h,          resizestep,        {.i=TWOBWM_RESIZE_LEFT_SLOW}},
+    {  MOD |SHIFT|ALT,        XK_k,          resizestep,        {.i=TWOBWM_RESIZE_UP_SLOW}},
+    {  MOD |SHIFT|ALT,        XK_j,          resizestep,        {.i=TWOBWM_RESIZE_DOWN_SLOW}},
+    {  MOD |SHIFT|ALT,        XK_l,          resizestep,        {.i=TWOBWM_RESIZE_RIGHT_SLOW}},
+    {  MOD |SHIFT|ALT,        XK_h,          resizestep,        {.i=TWOBWM_RESIZE_LEFT_SLOW}},
     // Move a window
-    {  MOD,					  XK_k,          movestep,          {.i=TWOBWM_MOVE_UP}},
-    {  MOD,					  XK_j,          movestep,          {.i=TWOBWM_MOVE_DOWN}},
-    {  MOD,					  XK_l,          movestep,          {.i=TWOBWM_MOVE_RIGHT}},
-    {  MOD,					  XK_h,          movestep,          {.i=TWOBWM_MOVE_LEFT}},
+    {  MOD,                   XK_k,          movestep,          {.i=TWOBWM_MOVE_UP}},
+    {  MOD,                   XK_j,          movestep,          {.i=TWOBWM_MOVE_DOWN}},
+    {  MOD,                   XK_l,          movestep,          {.i=TWOBWM_MOVE_RIGHT}},
+    {  MOD,                   XK_h,          movestep,          {.i=TWOBWM_MOVE_LEFT}},
     // Move a window slower
     {  MOD |ALT,              XK_k,          movestep,          {.i=TWOBWM_MOVE_UP_SLOW}},
-    {  MOD |ALT,			  XK_j,          movestep,          {.i=TWOBWM_MOVE_DOWN_SLOW}},
+    {  MOD |ALT,              XK_j,          movestep,          {.i=TWOBWM_MOVE_DOWN_SLOW}},
     {  MOD |ALT,              XK_l,          movestep,          {.i=TWOBWM_MOVE_RIGHT_SLOW}},
     {  MOD |ALT,              XK_h,          movestep,          {.i=TWOBWM_MOVE_LEFT_SLOW}},
     // Teleport the window to an area of the screen.
@@ -165,24 +151,25 @@ static key keys[] = {
     {  MOD |SHIFT|CONTROL,XK_u,         maxhalf,        {.i=TWOBWM_MAXHALF_UNFOLD_VERTICAL}},
     //unfold horizontally
     {  MOD |SHIFT|CONTROL,XK_n,         maxhalf,        {.i=TWOBWM_MAXHALF_UNFOLD_HORIZONTAL}},
-	// Center and Min-Max
+    // Center and Min-Max
     {  MOD ,              XK_z,     halfandcentered,{.i=0}},
-    {  MOD ,              XK_period,    changescreen,	{.i=TWOBWM_NEXT_SCREEN}}, // Next Screen
-    {  MOD ,              XK_comma,		changescreen,	{.i=TWOBWM_PREVIOUS_SCREEN}}, // Previous Screen
-    {  MOD ,              XK_f,         fix,			{}}, // Make the window present on all workspaces
-    {  MOD ,			  XK_space,    start,			{.com = rofi}},
-    {  MOD ,			  XK_Return,    start,			{.com = terminal}},
-    {  MOD,				  XK_a,			start,			{.com = browser}},
+    {  MOD ,              XK_period,    changescreen,   {.i=TWOBWM_NEXT_SCREEN}}, // Next Screen
+    {  MOD ,              XK_comma,     changescreen,   {.i=TWOBWM_PREVIOUS_SCREEN}}, // Previous Screen
+    {  MOD ,              XK_f,         fix,            {}}, // Make the window present on all workspaces
+    {  MOD ,              XK_space,     start,          {.com = rofi}},
+    {  MOD ,              XK_a,         start,          {.com = browser}},
+    {  MOD ,              XK_Return,    start,          {.com = terminal}},
+    {  MOD ,              XK_w,         start,          {.com = screenshot_window}},
+    {  MOD ,              XK_e,         start,          {.com = screenshot_selection}},
     // Media and Audio Keys
-    {  0x000000,		  0x1008ff13,	start,			{.com = volup}},
-    {  0x000000,		  0x1008ff11,	start,			{.com = voldown}},
-    {  0x000000,		  0x1008ff12,	start,			{.com = volmute}},
-    {  MOD,						XK_d,	start,			      {.com = volup}},
-    {  MOD,						XK_s,	start,			      {.com = voldown}},
+    {  0x000000,          0x1008ff13,   start,          {.com = volup}},
+    {  0x000000,          0x1008ff11,   start,          {.com = voldown}},
+    {  0x000000,          0x1008ff12,   start,          {.com = volmute}},
+    {  MOD,                     XK_d,   start,          {.com = volup}},
+    {  MOD,                     XK_s,   start,          {.com = voldown}},
 
-    //{  0x000000,		  0x1008ff03,	start,			{.com = brightdown}},
-    //{  0x000000,		  0x1008ff02,	start,			{.com = brightup}},
-    {  0x000000,		  XK_Print,		start,			{.com = scrot_select}},
+    //{  0x000000,        0x1008ff03,   start,          {.com = brightdown}},
+    //{  0x000000,        0x1008ff02,   start,          {.com = brightup}},
       // Exit or restart 2bwm
     {  MOD |CONTROL,      XK_q,         twobwm_exit,    {.i=0}},
     {  MOD |CONTROL,      XK_r,         twobwm_restart, {.i=0}},
@@ -232,10 +219,10 @@ static Button buttons[] = {
     {  MOD|SHIFT,  XCB_BUTTON_INDEX_1,     changeworkspace, {.i=0}},
     {  MOD|SHIFT,  XCB_BUTTON_INDEX_3,     changeworkspace, {.i=1}},
     {  MOD|ALT,    XCB_BUTTON_INDEX_1,     changescreen,    {.i=1}},
-    {  MOD|ALT,    XCB_BUTTON_INDEX_3,     changescreen,    {.i=0}},
-	{ CONTROL, XCB_BUTTON_INDEX_4, start, {.com = dummy}},
-	{ CONTROL, XCB_BUTTON_INDEX_5, start, {.com = dummy}}
+    {  MOD|ALT,    XCB_BUTTON_INDEX_3,     changescreen,    {.i=0}}
+    //{ CONTROL, XCB_BUTTON_INDEX_4, start, {.com = dummy}},
+    //{ CONTROL, XCB_BUTTON_INDEX_5, start, {.com = dummy}}
 };
 
 
-// vim: ft=cpp ts=4 sw=4 tw=0 fdm=marker foldlevel=0
+// vim: ft=c ts=4 sw=4 tw=0 fdm=marker foldlevel=0
