@@ -219,10 +219,6 @@ it right from the sources
 Troubleshooting
 ===============
 
-No borders appear when using URxvt
-----------------------------------
-This might be due to you .Xresources file. If you have `URxvt.depth: 32` comment it.
-
 Clickable areas with `bar`
 --------------------------
 
@@ -266,16 +262,6 @@ These are the values 2bwm will try loading from Xresources at startup:
 **Note**: set `enable_compton` option to true in case you're using a
 composition manager.
 
-mplayer borders aren't set on startup
--------------------------------------
-
-A simple solution is to always use the video output as gl.
-
-You can set it in your mplayer config `$HOME/.mplayer/config`:
-
-    vo=gl
-
-
 Preventing X11 Crash
 --------------------
 To prevent X to crash you can start the X session over your favorite terminal
@@ -287,9 +273,10 @@ emulator. Here's an example of a .xinitrc file that will do that:
 
 Screenshots:
 ============
-![2bwm](http://venam.1.ai/2bwm_colors.png)
-![yrmt 2bwm](http://fc00.deviantart.net/fs70/f/2013/236/8/0/agust_warm_setup_by_ybeastie-d6jaqyb.png)
-![movements](http://blog.z3bra.org/img/2014-05-27-windows.gif)
+
+![2bwm](https://venam.nixers.net/blog/assets/scrots/1.png)
+![2bwm with panel](https://venam.nixers.net/blog/assets/scrots/17.png)
+![2bwm fancy 3 borders](https://venam.nixers.net/blog/assets/scrots/19.png)
 
 Recommended Softwares
 =====================
@@ -339,8 +326,6 @@ TODO:
 
 * Fix the race condition bug that happens when switching workspaces too fast.
 
-* Fix the mapping issue with mplayer (doesn't have the issue when using -vo gl)
-
 * Bug related to gtkfilechooser dialog in telegram-desktop - needs more information to debug
 
 * Use the `xcb_ewmh.h` functions instead of that ugly hardcoded ATOM enum for
@@ -352,8 +337,7 @@ TODO:
 
   - Use the new xcb-ewmh for the EWMH hints.
      _NET_WM_STATE, _NET_WM_STATE_STICKY,
-     _NET_WM_STATE_MAXIMIZED_VERT, 
-     _NET_WM_STATE_FULLSCREEN
+     _NET_WM_STATE_MAXIMIZED_VERT, [etc](https://standards.freedesktop.org/wm-spec/wm-spec-latest.html#idm140200472615568).
 
 * A separate workspace list for every monitor. (CTRL+NUM)
 	* get the cursor position (on which monitor)
@@ -380,6 +364,7 @@ Big thanks for the help of the following persons:
 * crshd
 * jolia
 * anshin
+* frstrikerman
 
 Thanks to the UnixHub/Nixers community for the support and ideas.  
 Thanks to Michael Cardell for starting it all.

@@ -1,7 +1,6 @@
 ///---Types---///
 struct monitor {
 	xcb_randr_output_t id;
-	char *name;
 	int16_t y,x;                    // X and Y.
 	uint16_t width,height;          // Width/Height in pixels.
 	struct item *item;              // Pointer to our place in output list.
@@ -31,6 +30,7 @@ struct client {                     // Everything we know about a window.
 	bool usercoord;                 // X,Y was set by -geom.
 	int16_t x, y;                   // X/Y coordinate.
 	uint16_t width,height;          // Width,Height in pixels.
+	uint8_t  depth;                 // pixel depth
 	struct sizepos origsize;        // Original size if we're currently maxed.
 	uint16_t max_width, max_height,min_width, min_height, width_inc, height_inc,base_width, base_height;
 	bool fixed,unkillable,vertmaxed,hormaxed,maxed,verthor,ignore_borders,iconic;
