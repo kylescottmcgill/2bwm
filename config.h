@@ -1,5 +1,5 @@
 
-#define MOD XCB_MOD_MASK_4 /* Super/Windows key  or check xmodmap(1) with -pm  defined in /usr/include/xcb/xproto.h */
+#define MOD XCB_MOD_MASK_1 /* Super/Windows key  or check xmodmap(1) with -pm  defined in /usr/include/xcb/xproto.h */
 #define CURSOR_POSITION MIDDLE
 static const float resize_keep_aspect_ratio = 1.03;
 static const bool resize_by_line = true;
@@ -159,14 +159,14 @@ static key keys[] = {
     {  MOD ,              XK_space,     start,          {.com = rofi}},
     {  MOD ,              XK_a,         start,          {.com = browser}},
     {  MOD ,              XK_Return,    start,          {.com = terminal}},
-    {  MOD ,              XK_w,         start,          {.com = screenshot_window}},
-    {  MOD ,              XK_e,         start,          {.com = screenshot_selection}},
+    //{  MOD ,              XK_w,         start,          {.com = screenshot_window}},
+    //{  MOD ,              XK_e,         start,          {.com = screenshot_selection}},
     // Media and Audio Keys
-    {  0x000000,          0x1008ff13,   start,          {.com = volup}},
-    {  0x000000,          0x1008ff11,   start,          {.com = voldown}},
-    {  0x000000,          0x1008ff12,   start,          {.com = volmute}},
-    {  MOD,                     XK_d,   start,          {.com = volup}},
-    {  MOD,                     XK_s,   start,          {.com = voldown}},
+    //{  0x000000,          0x1008ff13,   start,          {.com = volup}},
+    //{  0x000000,          0x1008ff11,   start,          {.com = voldown}},
+    //{  0x000000,          0x1008ff12,   start,          {.com = volmute}},
+    //{  MOD,                     XK_d,   start,          {.com = volup}},
+    //{  MOD,                     XK_s,   start,          {.com = voldown}},
 
     //{  0x000000,        0x1008ff03,   start,          {.com = brightdown}},
     //{  0x000000,        0x1008ff02,   start,          {.com = brightup}},
