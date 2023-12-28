@@ -2,7 +2,7 @@
  * over the XCB library and derived from mcwm written by Michael Cardell.
  * Heavily modified version of http://www.hack.org/mc/hacks/mcwm/
  * Copyright (c) 2010, 2011, 2012 Michael Cardell Widerkrantz, mc at the domain hack.org.
- * Copyright (c) 2014, 2015 Patrick Louis, patrick at the domain iotek dot org.
+ * Copyright (c) 2014, 2020 Patrick Louis, patrick at the domain psychology dot wtf.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -36,14 +36,16 @@
 static xcb_generic_event_t *ev  = NULL;
 static void (*events[XCB_NO_OPERATION])(xcb_generic_event_t *e);
 static unsigned int numlockmask = 0;
-int sigcode = 0;                        // Signal code. Non-zero if we've been interruped by a signal.
+static bool is_sloppy = true;              // by default use sloppy focus
+int sigcode = 0;                           // Signal code. Non-zero if we've been interruped by a signal.
 xcb_connection_t *conn = NULL;             // Connection to X server.
 xcb_ewmh_connection_t *ewmh = NULL;        // Ewmh Connection.
 xcb_screen_t     *screen = NULL;           // Our current screen.
-int randrbase = 0;                      // Beginning of RANDR extension events.
+int randrbase = 0;                         // Beginning of RANDR extension events.
 static uint8_t curws = 0;                  // Current workspace.
 struct client *focuswin = NULL;            // Current focus window.
 static xcb_drawable_t top_win=0;           // Window always on top.
+static xcb_drawable_t dock_win=0;          // A single dock always on top.
 static struct item *winlist = NULL;        // Global list of all client windows.
 static struct item *monlist = NULL;        // List of all physical monitor outputs.
 static struct item *wslist[WORKSPACES];
@@ -105,6 +107,7 @@ static void addtoclientlist(const xcb_drawable_t);
 static void configurerequest(xcb_generic_event_t *);
 static void buttonpress(xcb_generic_event_t *);
 static void unmapnotify(xcb_generic_event_t *);
+static void mapnotify(xcb_generic_event_t *);
 static void destroynotify(xcb_generic_event_t *);
 static void circulaterequest(xcb_generic_event_t *);
 static void newwin(xcb_generic_event_t *);
@@ -118,7 +121,7 @@ static void cleanup(void);
 static uint32_t getwmdesktop(xcb_drawable_t);
 static void addtoworkspace(struct client *, uint32_t);
 static void grabbuttons(struct client *);
-static void delfromworkspace(struct client *, uint32_t);
+static void delfromworkspace(struct client *);
 static void unkillablewindow(struct client *);
 static void fixwindow(struct client *);
 static uint32_t getcolor(const char *);
@@ -188,10 +191,13 @@ focusnext(const Arg *arg)
 }
 
 void
-delfromworkspace(struct client *client, uint32_t ws)
+delfromworkspace(struct client *client)
 {
-	delitem(&wslist[ws], client->wsitem[ws]);
-	client->wsitem[ws] = NULL;
+	if(client->ws < 0)
+		return;
+	delitem(&wslist[client->ws], client->wsitem);
+	client->wsitem = NULL;
+	client->ws = -1;
 }
 
 void
@@ -459,7 +465,8 @@ addtoworkspace(struct client *client, uint32_t ws)
 		return;
 
 	/* Remember our place in the workspace window list. */
-	client->wsitem[ws] = item;
+	client->wsitem = item;
+	client->ws = ws;
 	item->data         = client;
 
 	/* Set window hint property so we can survive a crash. Like "fixed" */
@@ -482,31 +489,31 @@ changeworkspace_helper(const uint32_t ws)
 	xcb_query_pointer_reply_t *pointer;
 	struct client *client;
 	struct item *item;
-
-
 	if (ws == curws)
 		return;
-
 	xcb_ewmh_set_current_desktop(ewmh, 0, ws);
-	for (item=wslist[curws]; item != NULL; item = item->next) {
-		/* Go through list of current ws.
-		 * Unmap everything that isn't fixed. */
+	/* Go through list of current ws.
+	 * Unmap everything that isn't fixed. */
+	for (item=wslist[curws]; item != NULL;) {
 		client = item->data;
+		item = item->next;
 		setborders(client,false);
-		if (!client->fixed)
+		if (!client->fixed){
 			xcb_unmap_window(conn, client->id);
+		}else{
+			// correct order is delete first add later.
+			delfromworkspace(client);
+			addtoworkspace(client,ws);
+		}
 	}
-
 	for (item=wslist[ws]; item != NULL; item = item->next) {
 		client = item->data;
 		if (!client->fixed && !client->iconic)
 			xcb_map_window(conn, client->id);
 	}
-
 	curws = ws;
 	pointer = xcb_query_pointer_reply(conn, xcb_query_pointer(conn,
 				screen->root), 0);
-
 	if(pointer == NULL)
 		setfocus(NULL);
 	else {
@@ -552,10 +559,6 @@ fixwindow(struct client *client)
 				ewmh->_NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 32, 1,
 				&curws
 		);
-
-		/* Delete from all workspace lists except current. */
-		for (ws=0; ws < WORKSPACES; ws ++)
-			if (ws != curws) delfromworkspace(client, ws);
 	} else {
 		/* Raise the window, if going to another desktop don't
 		 * let the fixed window behind. */
@@ -566,10 +569,6 @@ fixwindow(struct client *client)
 				ewmh->_NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 32, 1,
 				&ww
 		);
-
-		/* Add window to all workspace lists. */
-		for (ws=0; ws < WORKSPACES; ws ++)
-			if (ws != curws) addtoworkspace(client, ws);
 	}
 
 	setborders(client,true);
@@ -602,9 +601,9 @@ sendtoworkspace(const Arg *arg)
 {
     if (NULL == focuswin||focuswin->fixed||arg->i == curws)
 	    return;
-
+	// correct order is delete first add later.
+    delfromworkspace(focuswin);
     addtoworkspace(focuswin, arg->i);
-    delfromworkspace(focuswin, curws);
     xcb_unmap_window(conn, focuswin->id);
     xcb_flush(conn);
 }
@@ -646,14 +645,12 @@ forgetclient(struct client *client)
 
 	if (NULL == client)
 		return;
-
 	if (client->id == top_win)
 		top_win = 0;
-
-	/* Delete client from the workspace lists it belongs to.
-	 * (can be on several) */
-	for (ws=0; ws < WORKSPACES; ws ++)
-		if (NULL != client->wsitem[ws]) delfromworkspace(client, ws);
+	if (client->id == dock_win)
+		dock_win = 0;
+	/* Delete client from the workspace list it belongs to. */
+	delfromworkspace(client);
 
 	/* Remove from global window list. */
 	freeitem(&winlist, NULL, client->winitem);
@@ -852,6 +849,7 @@ newwin(xcb_generic_event_t *ev)
 		XCB_NONE
 	};
 
+
 	/* The window is trying to map itself on the current workspace,
 	 * but since it's unmapped it probably belongs on another workspace.*/
 	if (NULL != findclient(&e->window))
@@ -895,6 +893,8 @@ newwin(xcb_generic_event_t *ev)
 
 	if (!client->maxed)
 		setborders(client,true);
+	// always focus new window
+	setfocus(client);
 }
 
 /* Set border colour, width and event mask for window. */
@@ -907,7 +907,7 @@ setupwin(xcb_window_t win)
 	xcb_atom_t a;
 	xcb_size_hints_t hints;
 	xcb_ewmh_get_atoms_reply_t win_type;
-	xcb_window_t *prop;
+	xcb_window_t prop;
 	struct item *item;
 	struct client *client;
 	xcb_get_property_cookie_t cookie;
@@ -921,6 +921,7 @@ setupwin(xcb_window_t win)
 					== ewmh->_NET_WM_WINDOW_TYPE_DOCK || a
 					== ewmh->_NET_WM_WINDOW_TYPE_DESKTOP ) {
 				xcb_map_window(conn,win);
+				dock_win = win;
 				return NULL;
 			}
 		}
@@ -963,8 +964,8 @@ setupwin(xcb_window_t win)
 	client->winitem       = item;
 
 	/* Initialize workspace pointers. */
-	for (ws=0; ws < WORKSPACES; ws ++)
-		client->wsitem[ws] = NULL;
+	client->wsitem = NULL;
+	client->ws = -1;
 
 	/* Get window geometry. */
 	getgeom(&client->id, &client->x, &client->y, &client->width,
@@ -1002,13 +1003,19 @@ setupwin(xcb_window_t win)
 	}
 	cookie = xcb_icccm_get_wm_transient_for_unchecked(conn, win);
 	if (cookie.sequence > 0) {
-		result = xcb_icccm_get_wm_transient_for_reply(conn, cookie, prop, NULL);
+		result = xcb_icccm_get_wm_transient_for_reply(conn, cookie, &prop, NULL);
 		if (result) {
-			struct client *parent = findclient(prop);
+			xcb_get_geometry_reply_t *parent = xcb_get_geometry_reply(conn,
+					xcb_get_geometry(conn, prop), NULL);
+
 			if (parent) {
 				client->usercoord = true;
 				client->x = parent->x+(parent->width/2.0) - (client->width/2.0);
 				client->y = parent->y+(parent->height/2.0) - (client->height/2.0);
+				moveresize(client->id, client->x, client->y,
+						client->width, client->height);
+				free(parent);
+				xcb_flush(conn);
 			}
 		}
 	}
@@ -1506,91 +1513,56 @@ movewindow(xcb_drawable_t win, const int16_t x, const int16_t y)
 
 	xcb_flush(conn);
 }
-
-/* Change focus to next in window ring. */
 void
 focusnext_helper(bool arg)
 {
 	struct client *cl = NULL;
-	/* no windows on current workspace*/
-	if (NULL == wslist[curws])
+	struct item *head = wslist[curws];
+	struct item *tail,*item = NULL;
+    // no windows on current workspace
+    if (NULL == head)
 		return;
-	/* If we currently have no focus focus first in list. */
-	if (NULL == focuswin || NULL == focuswin->wsitem[curws]) {
-		cl  = wslist[curws]->data;
-		while (cl->iconic==true && cl->wsitem[curws]->next!=NULL)
-			cl = cl->wsitem[curws]->next->data;
-	} else {
-		if (arg == TWOBWM_FOCUS_NEXT) {
-			if (NULL == focuswin->wsitem[curws]->prev) {
-				/* We were at the head of list.
-				 * Focusing on last window in list unless
-				 * we were already there.*/
-				cl = wslist[curws]->data;
-
-				/* Go to the end of the list */
-				while(cl->wsitem[curws]->next != NULL)
-					cl = cl->wsitem[curws]->next->data;
-				/* walk backward until we find
-				 * a window that isn't iconic */
-				while(cl->iconic == true)
-					cl = cl->wsitem[curws]->prev->data;
-			} else
-				if (focuswin!=wslist[curws]->data) {
-					cl = focuswin->wsitem[curws]->prev->data;
-					while (cl->iconic == true
-						&& cl->wsitem[curws]->prev
-							!= NULL)
-						cl = cl->wsitem[curws]->prev->data;
-					/* move to the head an didn't find a
-					 * window to focus so move to the end
-					 * starting from the focused win */
-					if(cl->iconic == true) {
-						cl = focuswin;
-						/* Go to the end of the list */
-						while(cl->wsitem[curws]->next
-								!= NULL)
-							cl = cl->wsitem[curws]->next->data;
-						while (cl->iconic == true)
-							cl = cl->wsitem[curws]->prev->data;
-					}
-				}
-		} else {
-			/* We were at the tail of list.
-			 * Focusing on last window in list unless we
-			 * were already there.*/
-			if (NULL == focuswin->wsitem[curws]->next) {
-				/* We were at the end of list.
-				 * Focusing on first window in list unless we
-				 * were already there. */
-				cl = wslist[curws]->data;
-				while(cl->iconic && cl->wsitem[curws]->next
-						!= NULL)
-					cl = cl->wsitem[curws]->next->data;
-			} else {
-				cl = focuswin->wsitem[curws]->next->data;
-				while (cl->iconic == true
-						&& cl->wsitem[curws]->next
-						!= NULL)
-					cl = cl->wsitem[curws]->next->data;
-				/* we reached the end of the list without a
-				 * new win to focus, so reloop from the head */
-				if (cl->iconic == true) {
-					cl = wslist[curws]->data;
-					while(cl->iconic
-						&& cl->wsitem[curws]->next
-						!= NULL)
-						cl = cl->wsitem[curws]->next->data;
-				}
-			}
+	// if no focus on current workspace, find first valid item on list.
+    if (NULL == focuswin || focuswin->ws != curws) {
+		for(item = head;item != NULL;item = item->next){
+			cl = item->data;
+			if(!cl->iconic)
+				break;
 		}
+    }else{
+		// find tail of list and make list circular.
+		for(tail = head = item = wslist[curws]; item != NULL;
+			tail = item,item = item->next);
+		head->prev = tail;
+		tail->next = head;
+		if (arg == TWOBWM_FOCUS_NEXT) {
+			// start from focus next and find first valid item on circular list.
+			head = item = focuswin->wsitem->next;
+			do{
+				cl = item->data;
+				if(!cl->iconic)
+					break;
+				item = item->next;
+			}while(item != head);
+		}else{
+			// start from focus previous and find first valid on circular list.
+			tail = item = focuswin->wsitem->prev;
+			do{
+				cl = item->data;
+				if(!cl->iconic)
+					break;
+				item = item->prev;
+			}while(item != tail);
+		}
+		// restore list.
+		wslist[curws]->prev->next = NULL;
+		wslist[curws]->prev = NULL;
 	}
-	/* if NULL focuswin */
-	if (NULL != cl && focuswin != cl && cl->iconic==false) {
-		raisewindow(cl->id);
-		centerpointer(cl->id,cl);
-		setfocus(cl);
-	}
+	if(!item || !(cl = item->data) || cl->iconic)
+		return;
+	raisewindow(cl->id);
+	centerpointer(cl->id,cl);
+	setfocus(cl);
 }
 /* Mark window win as unfocused. */
 void setunfocus(void)
@@ -1612,8 +1584,9 @@ findclient(const xcb_drawable_t *win)
 	for (item = winlist; item != NULL; item = item->next) {
 		client = item->data;
 
-		if (*win == client->id)
+		if (*win == client->id){
 			return client;
+		}
 	}
 
 	return NULL;
@@ -1859,7 +1832,7 @@ snapwindow(struct client *client)
 void
 mousemove(const int16_t rel_x, const int16_t rel_y)
 {
-	if (focuswin == NULL || focuswin->wsitem[curws] == NULL)
+	if (focuswin == NULL || focuswin->ws != curws)
 		return;
 
 	focuswin->x = rel_x;
@@ -1929,6 +1902,15 @@ setborders(struct client *client,const bool isitfocused)
 	uint32_t values[1];  /* this is the color maintainer */
 	uint16_t half = 0;
 	bool inv = conf.inverted_colors;
+
+	// something weird happened, fix client
+	if (client->width == 0 || client->height == 0) {
+		// restore from geometry
+		getgeom(&client->id, &client->x, &client->y, &client->width,
+			&client->height, &client->depth);
+		resize(client->id, client->width, client->height);
+		xcb_flush(conn);
+	}
 
 	if (client->maxed || client->ignore_borders)
 		return;
@@ -2285,15 +2267,12 @@ getpointer(const xcb_drawable_t *win, int16_t *x, int16_t *y)
 
 	pointer = xcb_query_pointer_reply(conn,
 			xcb_query_pointer(conn, *win), 0);
-
+	if (NULL == pointer)
+		return false;
 	*x = pointer->win_x;
 	*y = pointer->win_y;
 
 	free(pointer);
-
-	if (NULL == pointer)
-		return false;
-
 	return true;
 }
 
@@ -2560,14 +2539,18 @@ configwin(xcb_window_t win, uint16_t mask, const struct winconf *wc)
 
 	if (mask & XCB_CONFIG_WINDOW_WIDTH) {
 		mask |= XCB_CONFIG_WINDOW_WIDTH;
-		i++;
-		values[i] = wc->width;
+		if (wc->width != 0) {
+			i++;
+			values[i] = wc->width;
+		}
 	}
 
 	if (mask & XCB_CONFIG_WINDOW_HEIGHT) {
 		mask |= XCB_CONFIG_WINDOW_HEIGHT;
-		i++;
-		values[i] = wc->height;
+		if (wc->height != 0) {
+			i++;
+			values[i] = wc->height;
+		}
 	}
 
 	if (mask & XCB_CONFIG_WINDOW_SIBLING) {
@@ -2617,7 +2600,7 @@ configurerequest(xcb_generic_event_t *ev)
 
 		if (e->value_mask & XCB_CONFIG_WINDOW_Y)
 		 	if (!client->maxed && !client->vertmaxed)
-			client->y = e->y;
+				client->y = e->y;
 
 		/* XXX Do we really need to pass on sibling and stack mode
 		 * configuration? Do we want to? */
@@ -2843,7 +2826,24 @@ void
 buttonpress(xcb_generic_event_t *ev)
 {
 	xcb_button_press_event_t *e = (xcb_button_press_event_t *)ev;
+	struct client *client;
 	unsigned int i;
+
+
+	if (!is_sloppy && e->detail == XCB_BUTTON_INDEX_1
+			&& CLEANMASK(e->state) == 0) {
+		// skip if already focused
+		if (NULL != focuswin && e->event == focuswin->id) {
+			return;
+		}
+		client = findclient(&e->event);
+		if (NULL != client) {
+			setfocus(client);
+			raisewindow(client->id);
+			setborders(client,true);
+		}
+		return;
+	}
 
 	for (i=0; i<LENGTH(buttons); i++)
 		if (buttons[i].func && buttons[i].button == e->detail
@@ -2876,10 +2876,12 @@ clientmessage(xcb_generic_event_t *ev)
 			return;
 
 		if ( false == cl->iconic ) {
-			if (e->type == ewmh->_NET_ACTIVE_WINDOW)
+			if (e->type == ewmh->_NET_ACTIVE_WINDOW) {
 				setfocus(cl);
-			else
+				raisewindow(cl->id);
+			} else {
 				hide();
+			}
 
 			return;
 		}
@@ -2914,6 +2916,22 @@ clientmessage(xcb_generic_event_t *ev)
 					break;
 			}
 		}
+	} else if (e->type == ewmh->_NET_WM_DESKTOP && e->format == 32) {
+		cl = findclient(&e->window);
+		if (NULL == cl)
+			return;
+		/*
+		 * e->data.data32[1] Source indication
+		 * 0: backward compat
+		 * 1: normal
+		 * 2: pager/bars
+		 *
+		 * e->data.data32[0] new workspace
+		 */
+		delfromworkspace(cl);
+		addtoworkspace(cl, e->data.data32[0]);
+		xcb_unmap_window(conn, cl->id);
+		xcb_flush(conn);
 	}
 }
 
@@ -2940,6 +2958,13 @@ enternotify(xcb_generic_event_t *ev)
 {
 	xcb_enter_notify_event_t *e = (xcb_enter_notify_event_t *)ev;
 	struct client *client;
+	unsigned int modifiers[] = {
+		0,
+		XCB_MOD_MASK_LOCK,
+		numlockmask,
+		numlockmask | XCB_MOD_MASK_LOCK
+	};
+
 
 	/*
 	 * If this isn't a normal enter notify, don't bother. We also need
@@ -2952,6 +2977,7 @@ enternotify(xcb_generic_event_t *ev)
 	 * to change focus in those cases.
 	 */
 
+
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL
 			|| e->mode == XCB_NOTIFY_MODE_UNGRAB) {
 		/* If we're entering the same window we focus now,
@@ -2960,6 +2986,7 @@ enternotify(xcb_generic_event_t *ev)
 		if (NULL != focuswin && e->event == focuswin->id)
 			return;
 
+
 		/* Otherwise, set focus to the window we just entered if we
 		 * can find it among the windows we know about.
 		 * If not, just keep focus in the old window. */
@@ -2967,6 +2994,30 @@ enternotify(xcb_generic_event_t *ev)
 		client = findclient(&e->event);
 		if (NULL == client)
 			return;
+
+		/* skip this if not is_sloppy
+		 * we'll focus on click instead (see buttonpress function)
+		 * thus we have to grab left click button on that window
+		 * the grab is removed at the end of the setfocus function,
+		 * in the grabbuttons when not in sloppy mode
+		 */
+		if (!is_sloppy) {
+			for (unsigned int m=0; m<LENGTH(modifiers); m++) {
+				xcb_grab_button(conn,
+						0, // owner_events => 0 means
+						   // the grab_window won't
+						   // receive this event
+						client->id,
+						XCB_EVENT_MASK_BUTTON_PRESS,
+						XCB_GRAB_MODE_ASYNC,
+						XCB_GRAB_MODE_ASYNC,
+						screen->root, XCB_NONE,
+						XCB_BUTTON_INDEX_1,
+						modifiers[m]
+				);
+			}
+			return;
+		}
 
 		setfocus(client);
 		setborders(client,true);
@@ -2978,7 +3029,6 @@ unmapnotify(xcb_generic_event_t *ev)
 {
 	xcb_unmap_notify_event_t *e = (xcb_unmap_notify_event_t *)ev;
 	struct client *client = NULL;
-
 	/*
 	 * Find the window in our current workspace list, then forget about it.
 	 * Note that we might not know about the window we got the UnmapNotify
@@ -2993,18 +3043,29 @@ unmapnotify(xcb_generic_event_t *ev)
 	 * If we do this, we need to keep track of our own windows and
 	 * ignore UnmapNotify on them.
 	 */
-
 	client = findclient( & e->window);
-	if (NULL == client || client->wsitem[curws]==NULL)
+	if (NULL == client || client->ws != curws)
 		return;
-
 	if (focuswin!=NULL && client->id == focuswin->id)
 		focuswin = NULL;
-
 	if (client->iconic == false)
 		forgetclient(client);
 
 	updateclientlist();
+}
+
+void
+mapnotify(xcb_generic_event_t *ev)
+{
+	xcb_mapping_notify_event_t *e = (xcb_mapping_notify_event_t *)ev;
+	xcb_key_symbols_t *keysyms;
+	if (!(keysyms = xcb_key_symbols_alloc(conn)))
+		return;
+	xcb_refresh_keyboard_mapping(keysyms, e);
+	xcb_key_symbols_free(keysyms);
+
+	setup_keyboard();
+	grabkeys();
 }
 
 void
@@ -3057,6 +3118,8 @@ run(void)
 
 			if(top_win!=0)
 				raisewindow(top_win);
+			if (dock_win != 0)
+				raisewindow(dock_win);
 
 			free(ev);
 		}
@@ -3112,6 +3175,19 @@ grabbuttons(struct client *c)
 						buttons[b].mask|modifiers[m]
 				);
 		}
+
+	/* ungrab the left click, otherwise we can't use it
+	 * we've previously grabbed the left click in the enternotify function
+	 * when not in sloppy mode
+	 * though the name is counter-intuitive to the method
+	 */
+	for (unsigned int m=0; m<LENGTH(modifiers); m++) {
+		xcb_ungrab_button(conn,
+				XCB_BUTTON_INDEX_1,
+				c->id,
+				modifiers[m]
+		);
+	}
 }
 
 void
@@ -3253,6 +3329,7 @@ setup(int scrno)
 	events[XCB_KEY_PRESS]           = handle_keypress;
 	events[XCB_MAP_REQUEST]         = newwin;
 	events[XCB_UNMAP_NOTIFY]        = unmapnotify;
+	events[XCB_MAPPING_NOTIFY]      = mapnotify;
 	events[XCB_CONFIGURE_NOTIFY]    = confignotify;
 	events[XCB_CIRCULATE_REQUEST]   = circulaterequest;
 	events[XCB_BUTTON_PRESS]        = buttonpress;
