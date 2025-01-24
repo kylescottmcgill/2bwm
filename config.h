@@ -1,5 +1,5 @@
 
-#define MOD XCB_MOD_MASK_1 /* Super/Windows key  or check xmodmap(1) with -pm  defined in /usr/include/xcb/xproto.h */
+#define MOD XCB_MOD_MASK_4 /* Super/Windows key  or check xmodmap(1) with -pm  defined in /usr/include/xcb/xproto.h */
 #define CURSOR_POSITION MIDDLE
 static const float resize_keep_aspect_ratio = 1.03;
 static const bool resize_by_line = true;
@@ -38,18 +38,24 @@ static const uint8_t borders[] = {
 
 #define LOOK_INTO "WM_CLASS"
 static const char * ignore_names[] = {
-  "chromium",
-  "bar",
+  "google-chrome",
+  "steam",
+  "discord",
+  "polybar",
   "rofi",
+  "steam_app_*",
+  "steam_app_0",
+  "Starsector",
 };
 
 //
 ///--Menus and Programs---///
 static const char *terminal[] =             { "/usr/bin/alacritty", NULL };
 static const char *rofi[] =                 { "/usr/bin/rofi", "-show", "run", NULL};
-static const char *browser[] =              { "/usr/bin/chromium", NULL };
+static const char *browser[] =              { "/usr/bin/google-chrome-stable", NULL };
 static const char *screenshot_selection[] = { "screenshot", "--selection", NULL };
 static const char *screenshot_window[] =    { "screenshot", "--window", NULL };
+static const char *mpvpaste[] =             { "/usr/bin/alacritty", "-e", "mpvsm", NULL };
 
 ///---Media and Audio---///
 static const char *volup[] =                { "pavol", "up", NULL };
@@ -109,20 +115,20 @@ static key keys[] = {
     {  MOD |SHIFT,    XK_l,          resizestep,        {.i=TWOBWM_RESIZE_RIGHT}},
     {  MOD |SHIFT,    XK_h,          resizestep,        {.i=TWOBWM_RESIZE_LEFT}},
     // Resize a window slower
-    {  MOD |SHIFT|ALT,        XK_k,          resizestep,        {.i=TWOBWM_RESIZE_UP_SLOW}},
-    {  MOD |SHIFT|ALT,        XK_j,          resizestep,        {.i=TWOBWM_RESIZE_DOWN_SLOW}},
-    {  MOD |SHIFT|ALT,        XK_l,          resizestep,        {.i=TWOBWM_RESIZE_RIGHT_SLOW}},
-    {  MOD |SHIFT|ALT,        XK_h,          resizestep,        {.i=TWOBWM_RESIZE_LEFT_SLOW}},
+    {  ALT |SHIFT,        XK_k,          resizestep,        {.i=TWOBWM_RESIZE_UP_SLOW}},
+    {  ALT |SHIFT,        XK_j,          resizestep,        {.i=TWOBWM_RESIZE_DOWN_SLOW}},
+    {  ALT |SHIFT,        XK_l,          resizestep,        {.i=TWOBWM_RESIZE_RIGHT_SLOW}},
+    {  ALT |SHIFT,        XK_h,          resizestep,        {.i=TWOBWM_RESIZE_LEFT_SLOW}},
     // Move a window
     {  MOD,                   XK_k,          movestep,          {.i=TWOBWM_MOVE_UP}},
     {  MOD,                   XK_j,          movestep,          {.i=TWOBWM_MOVE_DOWN}},
     {  MOD,                   XK_l,          movestep,          {.i=TWOBWM_MOVE_RIGHT}},
     {  MOD,                   XK_h,          movestep,          {.i=TWOBWM_MOVE_LEFT}},
     // Move a window slower
-    {  MOD |ALT,              XK_k,          movestep,          {.i=TWOBWM_MOVE_UP_SLOW}},
-    {  MOD |ALT,              XK_j,          movestep,          {.i=TWOBWM_MOVE_DOWN_SLOW}},
-    {  MOD |ALT,              XK_l,          movestep,          {.i=TWOBWM_MOVE_RIGHT_SLOW}},
-    {  MOD |ALT,              XK_h,          movestep,          {.i=TWOBWM_MOVE_LEFT_SLOW}},
+    {  ALT,              XK_k,          movestep,          {.i=TWOBWM_MOVE_UP_SLOW}},
+    {  ALT,              XK_j,          movestep,          {.i=TWOBWM_MOVE_DOWN_SLOW}},
+    {  ALT,              XK_l,          movestep,          {.i=TWOBWM_MOVE_RIGHT_SLOW}},
+    {  ALT,              XK_h,          movestep,          {.i=TWOBWM_MOVE_LEFT_SLOW}},
     // Teleport the window to an area of the screen.
     // Center:
     {  MOD ,              XK_g,          teleport,          {.i=TWOBWM_TELEPORT_CENTER}},
@@ -176,10 +182,11 @@ static key keys[] = {
     {  MOD ,              XK_Return,    start,          {.com = terminal}},
     //{  MOD ,              XK_w,         start,          {.com = screenshot_window}},
     //{  MOD ,              XK_e,         start,          {.com = screenshot_selection}},
+    {  MOD ,              XK_c,         start,          {.com = mpvpaste}},
     // Media and Audio Keys
-    //{  0x000000,          0x1008ff13,   start,          {.com = volup}},
-    //{  0x000000,          0x1008ff11,   start,          {.com = voldown}},
-    //{  0x000000,          0x1008ff12,   start,          {.com = volmute}},
+    {  0x000000,          0x1008ff13,   start,          {.com = volup}},
+    {  0x000000,          0x1008ff11,   start,          {.com = voldown}},
+    {  0x000000,          0x1008ff12,   start,          {.com = volmute}},
     //{  MOD,                     XK_d,   start,          {.com = volup}},
     //{  MOD,                     XK_s,   start,          {.com = voldown}},
 
